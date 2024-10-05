@@ -73,13 +73,16 @@ pub fn convert_pixels(pixels: Pixels, info: &Metadata) -> Vec<u8> {
 }
 
 #[pyclass(module = "pillow_jxl")]
-pub struct Decoder;
+pub struct Decoder {
+    num_threads: isize,
+}
 
 #[pymethods]
 impl Decoder {
     #[new]
-    fn new() -> Self {
-        Self
+    #[pyo3(signature = (num_threads = -1))]
+    fn new(num_threads: isize) -> Self {
+        Self { num_threads }
     }
 
     #[pyo3(signature = (data))]
@@ -88,7 +91,15 @@ impl Decoder {
         _py: Python,
         data: &[u8],
     ) -> PyResult<(bool, ImageInfo, Cow<'_, [u8]>, Cow<'_, [u8]>)> {
-        let parallel_runner = ThreadsRunner::default();
+        let parallel_runner = ThreadsRunner::new(
+            None,
+            if self.num_threads < 0 {
+                None
+            } else {
+                Some(self.num_threads as usize)
+            },
+        )
+        .ok_or_else(|| PyRuntimeError::new_err("Could not create threads runner"))?;
         let decoder = decoder_builder()
             .icc_profile(true)
             .parallel_runner(&parallel_runner)
