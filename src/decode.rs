@@ -91,6 +91,16 @@ impl Decoder {
         _py: Python,
         data: &[u8],
     ) -> PyResult<(bool, ImageInfo, Cow<'_, [u8]>, Cow<'_, [u8]>)> {
+        _py.allow_threads(|| self.call_inner(data))
+    }
+
+    fn __repr__(&self) -> PyResult<String> {
+        Ok(format!("Decoder"))
+    }
+}
+
+impl Decoder {
+    fn call_inner(&self, data: &[u8]) -> PyResult<(bool, ImageInfo, Cow<'_, [u8]>, Cow<'_, [u8]>)> {
         let parallel_runner = ThreadsRunner::new(
             None,
             if self.num_threads < 0 {
@@ -120,10 +130,6 @@ impl Decoder {
             Cow::Owned(img),
             Cow::Owned(icc_profile),
         ))
-    }
-
-    fn __repr__(&self) -> PyResult<String> {
-        Ok(format!("Decoder"))
     }
 }
 
