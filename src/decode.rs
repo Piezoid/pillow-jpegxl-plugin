@@ -44,7 +44,7 @@ impl ImageInfo {
     }
 }
 
-pub fn convert_pixels(pixels: Pixels) -> Vec<u8> {
+pub fn convert_pixels(pixels: Pixels, info: &Metadata) -> Vec<u8> {
     let mut result = Vec::new();
     match pixels {
         Pixels::Uint8(pixels) => {
@@ -55,15 +55,18 @@ pub fn convert_pixels(pixels: Pixels) -> Vec<u8> {
         Pixels::Uint16(pixels) => {
             for pixel in pixels {
                 result.push((pixel >> 8) as u8);
-                result.push(pixel as u8);
             }
         }
         Pixels::Float(pixels) => {
             for pixel in pixels {
-                result.push((pixel * 255.0) as u8);
+                result.push((pixel * info.intensity_target) as u8);
             }
         }
-        Pixels::Float16(_) => panic!("Float16 is not supported yet"),
+        Pixels::Float16(pixels) => {
+            for pixel in pixels {
+                result.push((f32::from(pixel) * info.intensity_target) as u8);
+            }
+        }
     }
     result
 }
@@ -93,7 +96,7 @@ impl Decoder {
         let (info, img) = decoder.reconstruct(&data).unwrap();
         let (jpeg, img) = match img {
             Data::Jpeg(x) => (true, x),
-            Data::Pixels(x) => (false, convert_pixels(x)),
+            Data::Pixels(x) => (false, convert_pixels(x, &info)),
         };
         let icc_profile: Vec<u8> = match &info.icc_profile {
             Some(x) => x.to_vec(),
